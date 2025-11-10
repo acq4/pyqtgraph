@@ -175,7 +175,7 @@ def parseString(lines, start=0, **scope):
                     ) from ex
             else:
                 next_real_ln = next((i for i in range(ln + 1, len(lines)) if _line_is_real(lines[i])), len(lines))
-                if ln + 1 >= len(lines) or measureIndent(lines[next_real_ln]) <= indent:
+                if next_real_ln >= len(lines) or measureIndent(lines[next_real_ln]) <= indent:
                     val = {}
                 else:
                     ln, val = parseString(lines, start=ln + 1, **scope)
