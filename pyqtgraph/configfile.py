@@ -62,7 +62,7 @@ def readConfigFile(fname, **scope):
         **scope,
         **units.allUnits,
         'OrderedDict': OrderedDict,
-        'readConfigFile': readConfigFile,
+        'readConfigFile': lambda fname: readConfigFile(fname, **scope),
         'Point': Point,
         'QtCore': QtCore,
         'ColorMap': ColorMap,
