@@ -43,13 +43,13 @@ class ParseError(Exception):
         return msg
 
 
-def writeConfigFile(data, fname):
-    s = genString(data)
+def writeConfigFile(data, fname, serializer=None):
+    s = genString(data, serializer=serializer)
     with open(fname, 'wt', encoding='utf-8') as fd:
         fd.write(s)
 
 
-def readConfigFile(fname, **scope):
+def readConfigFile(fname, deserializer=None, **scope):
     global GLOBAL_PATH
     if GLOBAL_PATH is not None:
         fname2 = os.path.join(GLOBAL_PATH, fname)
@@ -82,7 +82,7 @@ def readConfigFile(fname, **scope):
             s = fd.read()
         s = s.replace("\r\n", "\n")
         s = s.replace("\r", "\n")
-        data = parseString(s, **local)[1]
+        data = parseString(s, deserializer=deserializer, **local)[1]
     except ParseError:
         sys.exc_info()[1].fileName = fname
         raise
@@ -92,13 +92,13 @@ def readConfigFile(fname, **scope):
     return data
 
 
-def appendConfigFile(data, fname):
-    s = genString(data)
+def appendConfigFile(data, fname, serializer=None):
+    s = genString(data, serializer=serializer)
     with open(fname, 'at', encoding='utf-8') as fd:
         fd.write(s)
 
 
-def genString(data, indent=''):
+def genString(data, indent='', serializer=None):
     s = ''
     for k in data:
         sk = str(k)
@@ -110,16 +110,19 @@ def genString(data, indent=''):
             raise ValueError(
                 f'dict keys must not contain ":" or start with spaces [offending key is "{sk}"]'
             )
-        if isinstance(data[k], dict):
+        v = data[k]
+        if serializer is not None:
+            v = serializer(v)
+        if isinstance(v, dict):
             s += f"{indent}{sk}:\n"
-            s += genString(data[k], f'{indent}    ')
+            s += genString(v, f'{indent}    ', serializer)
         else:
-            line = repr(data[k]).replace("\n", "\\\n")
+            line = repr(v).replace("\n", "\\\n")
             s += f"{indent}{sk}: {line}\n"
     return s
 
 
-def parseString(lines, start=0, **scope):
+def parseString(lines, start=0, deserializer=None, **scope):
     data = OrderedDict()
     if isinstance(lines, str):
         lines = lines.replace("\\\n", "")
@@ -178,9 +181,11 @@ def parseString(lines, start=0, **scope):
                 if next_real_ln >= len(lines) or measureIndent(lines[next_real_ln]) <= indent:
                     val = {}
                 else:
-                    ln, val = parseString(lines, start=ln + 1, **scope)
+                    ln, val = parseString(lines, start=ln + 1, deserializer=deserializer, **scope)
             if k in data:
                 raise ParseError(f'Duplicate key: {k}', ln + 1, l)
+            if deserializer is not None:
+                val = deserializer(val)
             data[k] = val
     except ParseError:
         raise
