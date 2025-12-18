@@ -127,15 +127,15 @@ class ReplWidget(QtWidgets.QWidget):
         if style == 'output' and row == self._lastCommandRow + 1:
             # adjust style for first line of output
             firstLine, endl, strn = strn.partition('\n')
-            self._setTextStyle('output_first_line')
-            self.output.insertPlainText(firstLine + endl)
+            self._setTextStyle('output_first_line', cursor)
+            cursor.insertText(firstLine + endl)
 
         if len(strn) > 0:
-            self._setTextStyle(style)
-            self.output.insertPlainText(strn)
+            self._setTextStyle(style, cursor)
+            cursor.insertText(strn)
             # return to output style immediately to avoid seeing an extra line of command style
             if style != 'output':
-                self._setTextStyle('output')
+                self._setTextStyle('output', cursor)
 
         if scrollToBottom:
             sb.setValue(sb.maximum())
@@ -148,9 +148,8 @@ class ReplWidget(QtWidgets.QWidget):
             self.input.setEnabled(True)
             self.input.setFocus()
 
-    def _setTextStyle(self, style):
+    def _setTextStyle(self, style, cursor):
         charFormat, blockFormat = self.textStyles[style]
-        cursor = self.output.textCursor()
         cursor.setBlockFormat(blockFormat)
         self.output.setCurrentCharFormat(charFormat)
 
