@@ -108,7 +108,10 @@ class MatplotlibExporter(Exporter):
         ax.clear()
         self.cleanAxes(ax)
         for item in self.item.curves:
-            x, y = item.getData()
+            maybedata = item.getData()
+            if maybedata is None:
+                continue
+            x, y = maybedata
             x = x * xscale
             y = y * yscale
 
