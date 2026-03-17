@@ -24,6 +24,9 @@ class ReplWidget(QtWidgets.QWidget):
         self._thread.sigCommandExecuted.connect(self.handleCommandExecuted)
         if allowNonGuiExecution:
             self._thread.start()
+            app = QtCore.QCoreApplication.instance()
+            if app is not None:
+                app.aboutToQuit.connect(self._stopThreadOnQuit)
 
         self._setupUi()
 
@@ -148,6 +151,15 @@ class ReplWidget(QtWidgets.QWidget):
             self.input.setEnabled(True)
             self.input.setFocus()
 
+    def closeEvent(self, event):
+        if self._allowNonGuiExecution and self._thread.isRunning():
+            self._thread.stop()
+        super().closeEvent(event)
+
+    def _stopThreadOnQuit(self):
+        if self._allowNonGuiExecution and self._thread.isRunning():
+            self._thread.stop()
+
     def _setTextStyle(self, style, cursor):
         charFormat, blockFormat = self.textStyles[style]
         cursor.setBlockFormat(blockFormat)
@@ -175,10 +187,16 @@ class ReplThread(QtCore.QThread):
     def queueCommand(self, cmd):
         self._commands.put(cmd)
 
+    def stop(self):
+        """Signal the thread to stop and wait for it to finish."""
+        self._commands.put(None)
+        self.wait()
+
     def run(self):
-        # todo handle external interruptions
         while True:
             cmd = self._commands.get()
+            if cmd is None:  # sentinel value; time to stop
+                break
             self.runCmd(cmd)
 
     def runCmd(self, cmd):
