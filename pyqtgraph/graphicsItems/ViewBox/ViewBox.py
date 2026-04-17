@@ -9,7 +9,7 @@ from ... import debug as debug
 from ... import functions as fn
 from ... import getConfigOption
 from ...Point import Point
-from ...Qt import QtCore, QtGui, QtWidgets, isQObjectAlive, QT_LIB
+from ...Qt import QT_LIB, QtCore, QtGui, QtWidgets, isQObjectAlive
 from ..GraphicsWidget import GraphicsWidget
 from ..ItemGroup import ItemGroup
 
@@ -285,12 +285,23 @@ class ViewBox(GraphicsWidget):
             ViewBox.NamedViews[name] = self
             ViewBox.updateAllViewLists()
             sid = id(self)
-            self.destroyed.connect(lambda: ViewBox.forgetView(sid, name) if (ViewBox is not None and 'sid' in locals() and 'name' in locals()) else None)
+            def _forgetViewSlot():
+                if ViewBox is not None:
+                    ViewBox.forgetView(sid, name)
+            self._destroyedForgetSlot = _forgetViewSlot
+            self.destroyed.connect(_forgetViewSlot)
 
     def unregister(self):
         """
         Remove this ViewBox from the list of linkable views. (see :func:`register() <pyqtgraph.ViewBox.register>`)
         """
+        slot = getattr(self, '_destroyedForgetSlot', None)
+        if slot is not None:
+            try:
+                self.destroyed.disconnect(slot)
+            except (RuntimeError, TypeError):
+                pass
+            self._destroyedForgetSlot = None
         del ViewBox.AllViews[self]
         if self.name is not None:
             del ViewBox.NamedViews[self.name]

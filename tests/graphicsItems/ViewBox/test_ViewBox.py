@@ -84,6 +84,65 @@ def test_ViewBox_setMenuEnabled():
 
 
 
+def test_register_stores_destroyed_slot():
+    """register() with a name stores a slot on the instance for later disconnection."""
+    vb = pg.ViewBox(name="test_register_slot")
+    try:
+        assert vb._destroyedForgetSlot is not None
+        assert callable(vb._destroyedForgetSlot)
+        assert "test_register_slot" in pg.ViewBox.NamedViews
+    finally:
+        vb.close()
+
+
+def test_unregister_clears_destroyed_slot():
+    """unregister() disconnects and clears the destroyed slot to prevent double-removal."""
+    vb = pg.ViewBox(name="test_unregister_slot")
+    assert vb._destroyedForgetSlot is not None
+
+    vb.unregister()
+
+    assert vb._destroyedForgetSlot is None
+    assert "test_unregister_slot" not in pg.ViewBox.NamedViews
+    assert vb not in pg.ViewBox.AllViews
+
+
+def test_no_crash_if_slot_called_after_unregister():
+    """Calling forgetView after unregister (as destroyed signal would) must not crash.
+
+    This is the core regression: the destroyed signal previously could fire
+    after close() already cleaned up the view, causing a double-removal.
+    """
+    vb = pg.ViewBox(name="test_slot_after_close")
+    vid = id(vb)
+    name = "test_slot_after_close"
+
+    vb.close()
+
+    # Simulates what the destroyed signal slot would have done had it not been disconnected.
+    # forgetView must handle a view that's already been removed without crashing.
+    pg.ViewBox.forgetView(vid, name)
+
+
+def test_unnamed_viewbox_has_no_destroyed_slot():
+    """An unnamed ViewBox does not register a destroyed slot (nothing to forget)."""
+    vb = pg.ViewBox()
+    assert not hasattr(vb, '_destroyedForgetSlot') or vb._destroyedForgetSlot is None
+    vb.close()
+
+
+def test_close_removes_from_all_views():
+    """close() fully unregisters the ViewBox from both AllViews and NamedViews."""
+    vb = pg.ViewBox(name="test_close_cleanup")
+    assert vb in pg.ViewBox.AllViews
+    assert "test_close_cleanup" in pg.ViewBox.NamedViews
+
+    vb.close()
+
+    assert vb not in pg.ViewBox.AllViews
+    assert "test_close_cleanup" not in pg.ViewBox.NamedViews
+
+
 skipreason = "Skipping this test until someone has time to fix it."
 @pytest.mark.skipif(True, reason=skipreason)
 def test_limits_and_resize():
