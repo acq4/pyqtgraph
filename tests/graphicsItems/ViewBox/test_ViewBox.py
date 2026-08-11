@@ -1,4 +1,10 @@
 #import PySide
+import os
+import pathlib
+import subprocess
+import sys
+import textwrap
+
 import pytest
 
 import pyqtgraph as pg
@@ -82,6 +88,47 @@ def test_ViewBox_setMenuEnabled():
     vb.setMenuEnabled(False)
     assert vb.menu is None
 
+
+
+def test_no_crash_when_a_named_view_is_collected_by_the_gc():
+    """A named ViewBox reclaimed by the cyclic GC must not crash the interpreter.
+
+    register() connects a Python slot to destroyed(). A slot reachable only from
+    the ViewBox lands in the same cyclic-garbage group as the ViewBox itself, and
+    the GC is free to clear it before deallocating the ViewBox. Deallocating the
+    ViewBox destroys the underlying C++ object, which emits destroyed(), which
+    calls the already-cleared slot -- a use-after-free that takes the whole
+    interpreter down. Run in a subprocess because the failure is a SIGSEGV rather
+    than an exception.
+    """
+    script = textwrap.dedent(
+        """
+        import gc
+        import pyqtgraph as pg
+
+        app = pg.mkQApp()
+        for i in range(5):
+            w = pg.PlotWidget()
+            w.getViewBox().register(f"gc-collected-{i}")
+            w._cycle = w  # only the cyclic GC can reclaim this
+            del w
+        gc.collect()
+        print("survived")
+        """
+    )
+    # Point the child at the pyqtgraph this test imported, not whatever its cwd
+    # happens to make importable.
+    env = dict(os.environ)
+    repo_root = str(pathlib.Path(pg.__file__).parent.parent)
+    env["PYTHONPATH"] = os.pathsep.join(filter(None, [repo_root, env.get("PYTHONPATH")]))
+    result = subprocess.run(
+        [sys.executable, "-c", script], capture_output=True, text=True, timeout=120, env=env
+    )
+    assert result.returncode == 0, (
+        f"interpreter died with returncode {result.returncode}\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+    assert "survived" in result.stdout
 
 
 def test_register_stores_destroyed_slot():

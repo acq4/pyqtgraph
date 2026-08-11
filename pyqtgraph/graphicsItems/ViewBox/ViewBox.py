@@ -16,6 +16,17 @@ from ..ItemGroup import ItemGroup
 __all__ = ['ViewBox']
 
 
+# The slots register() connects to destroyed(), keyed by id() of their ViewBox.
+#
+# A slot reachable only from its own ViewBox shares that ViewBox's cyclic-garbage
+# group, and the GC may clear the slot before it deallocates the ViewBox.
+# Deallocating the ViewBox destroys the underlying C++ object, which emits
+# destroyed(), which calls the cleared slot -- a use-after-free that segfaults the
+# interpreter. Holding the slot here keeps it reachable from a GC root, so it is
+# always intact by the time destroyed() fires.
+_destroyedForgetSlots = {}
+
+
 class WeakList(object):
 
     def __init__(self):
@@ -286,9 +297,11 @@ class ViewBox(GraphicsWidget):
             ViewBox.updateAllViewLists()
             sid = id(self)
             def _forgetViewSlot():
+                _destroyedForgetSlots.pop(sid, None)
                 if ViewBox is not None:
                     ViewBox.forgetView(sid, name)
             self._destroyedForgetSlot = _forgetViewSlot
+            _destroyedForgetSlots[sid] = _forgetViewSlot
             self.destroyed.connect(_forgetViewSlot)
 
     def unregister(self):
@@ -302,6 +315,7 @@ class ViewBox(GraphicsWidget):
             except (RuntimeError, TypeError):
                 pass
             self._destroyedForgetSlot = None
+            _destroyedForgetSlots.pop(id(self), None)
         del ViewBox.AllViews[self]
         if self.name is not None:
             del ViewBox.NamedViews[self.name]
