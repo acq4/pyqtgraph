@@ -216,6 +216,7 @@ from .widgets.RemoteGraphicsView import RemoteGraphicsView
 from .widgets.ScatterPlotWidget import *
 from .widgets.SpinBox import *
 from .widgets.TableWidget import *
+from .widgets.TypedTableWidget import *
 from .widgets.TreeWidget import *
 from .widgets.ValueLabel import *
 from .widgets.VerticalLabel import *

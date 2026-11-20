@@ -200,5 +200,17 @@ cfg = {
         'cmaplut' : 'viridis',
         'progress': 50,
         'font': 'Inter',
-    }
+    },
+
+    'Table Example': {
+        'pulses': {
+            'type': 'table',
+            'columns': [
+                {'name': 'count', 'type': 'int', 'default': 1},
+                {'name': 'duration', 'type': 'float', 'suffix': 's', 'siPrefix': True, 'default': 0.2},
+                {'name': 'pressure', 'type': 'float', 'suffix': 'Pa', 'siPrefix': True, 'limits': (-100e3, 0)},
+            ],
+            'value': [(1, 0.2, -30e3), (2, 0.5, -60e3)],
+        },
+    },
 }

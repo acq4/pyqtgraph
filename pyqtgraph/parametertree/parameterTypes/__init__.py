@@ -22,6 +22,7 @@ from .progress import ProgressBarParameter, ProgressBarParameterItem
 from .qtenum import QtEnumParameter
 from .slider import SliderParameter, SliderParameterItem
 from .str import StrParameterItem
+from .table import TableParameter, TableParameterItem
 from .text import TextParameter, TextParameterItem
 
 registerParameterType('group',        GroupParameter,       override=True)
@@ -45,4 +46,5 @@ registerParameterType('progress',  ProgressBarParameter, override=True)
 # qtenum is a bit specific, hold off on registering for now
 registerParameterType('slider',    SliderParameter,      override=True)
 registerParameterType('str',       SimpleParameter,      override=True)
+registerParameterType('table',     TableParameter,       override=True)
 registerParameterType('text',      TextParameter,        override=True)
